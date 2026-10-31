@@ -1,0 +1,9 @@
+.git
+.env
+.env.*
+!.env.example
+database/database.sqlite
+node_modules
+tests
+js-tests
+vendor
