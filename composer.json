@@ -1,9 +1,14 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "local/librio",
+    "name": "realunfazed/librio",
     "type": "project",
     "description": "Librio: online PDF library with encrypted books on Postfile and a reader for mobile and desktop.",
     "license": "MIT",
+    "authors": [
+        {
+            "name": "Alireza Asakareh (RealUnfazed)"
+        }
+    ],
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0"

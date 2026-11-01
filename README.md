@@ -41,3 +41,7 @@ This stops link sharing, scraping and casual downloading and makes leaks traceab
 * Every page view passes through your server, so on Vercel it counts toward Vercel's bandwidth and function-time limits.
 * Optional: run `composer install` once and commit `composer.lock` for reproducible builds.
 * Tests: `node js-tests/chunk-decrypt.test.js`, `node js-tests/range-sim.test.js`.
+
+## License
+
+[MIT](LICENSE) © 2026 Alireza Asakareh (RealUnfazed)
