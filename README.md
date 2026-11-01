@@ -25,6 +25,10 @@ How books reach the reader (`LIBRARY_DELIVERY`, default `proxy`, also on Vercel)
 decrypts it and streams plain PDF bytes to the browser in small pieces (max 1 MiB per response, so Vercel's response limit never applies).
 The Postfile link never reaches the browser. `encrypted` (browser downloads ciphertext directly) only works with file hosts that send CORS headers; Postfile does not.
 
+## Android
+
+See `ANDROID.md`: install from Chrome in 30 seconds, or build a real APK (screenshots blocked) with GitHub Actions.
+
 ## Security (honest version)
 A watermark (your site's domain by default, `LIBRARY_WATERMARK=domain-id` adds the reader's number for tracing leaks) is drawn into every page, no download/print button, no text layer, rate limits, login required.
 A logged-in reader can still screenshot what they see.

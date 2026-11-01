@@ -7,3 +7,5 @@ node_modules
 tests
 js-tests
 vendor
+android
+.github

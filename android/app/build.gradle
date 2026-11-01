@@ -1,0 +1,50 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'app.librio'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'app.librio'
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+
+        buildConfigField 'String', 'BASE_URL', "\"${project.findProperty('librioUrl') ?: 'https://librio.unfazed.ir'}\""
+        buildConfigField 'boolean', 'SECURE', "${project.findProperty('librioSecure') ?: 'true'}"
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // A fixed signing key (committed on purpose) so a new APK installs OVER the old one.
+    // Personal sideloading only. For the Play Store make your own private keystore.
+    signingConfigs {
+        release {
+            storeFile file('librio.keystore')
+            storePassword 'librio-sideload'
+            keyAlias 'librio'
+            keyPassword 'librio-sideload'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+    }
+}

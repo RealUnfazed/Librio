@@ -8,6 +8,7 @@
 <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
 <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 @include('partials.theme-init')
+@include('partials.pwa')
 </head>
 <body class="auth">
 <div class="theme-corner">@include('partials.theme-toggle')</div>
