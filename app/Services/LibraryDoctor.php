@@ -21,7 +21,7 @@ class LibraryDoctor
         try {
             DB::connection()->getPdo();
             $add(true, 'Database connected (' . config('database.default') . ')');
-            $need = ['users', 'books', 'invites', 'bookmarks', 'reading_progress', 'cache'];
+            $need = ['users', 'books', 'invites', 'bookmarks', 'reading_progress', 'cache', 'upload_sessions', 'upload_pieces'];
             $missing = array_values(array_filter($need, fn ($t) => ! Schema::hasTable($t)));
             $add(! $missing, $missing
                 ? 'Tables missing: ' . implode(', ', $missing) . '. Set LIBRARY_AUTO_SETUP=true and redeploy.'
@@ -63,14 +63,17 @@ class LibraryDoctor
             $origin = rtrim((string) config('app.url'), '/');
             $get = Http::withHeaders(['Origin' => $origin])->timeout(30)->get($up['url']);
             $cors = $get->header('Access-Control-Allow-Origin');
-            $add((bool) $cors, $cors
-                ? "Browsers may download files from the Postfile CDN (CORS: {$cors})"
-                : 'Postfile CDN sends NO CORS header, so Vercel mode (encrypted) cannot work. Use another file host or a VPS with LIBRARY_DELIVERY=proxy.');
+            $proxy = config('library.delivery') === 'proxy';
+            $add($cors ? true : ($proxy ? null : false), $cors
+                ? "The file host allows browser downloads (CORS: {$cors})"
+                : ($proxy
+                    ? 'The file host sends no CORS header. That is fine: Librio streams books through your server (proxy mode).'
+                    : 'The file host sends NO CORS header, so LIBRARY_DELIVERY=encrypted cannot work. Set LIBRARY_DELIVERY=proxy.'));
 
             $range = Http::withHeaders(['Range' => 'bytes=0-15'])->timeout(30)->get($up['url']);
             $add($range->status() === 206 ? true : null, $range->status() === 206
-                ? 'Range requests supported'
-                : 'Range requests not honoured (HTTP ' . $range->status() . ')');
+                ? 'The file host supports Range requests (fast page-by-page streaming)'
+                : 'The file host ignores Range requests (HTTP ' . $range->status() . '): books still open, but more slowly.');
         } catch (\Throwable $e) {
             $add(false, 'Upload test failed: ' . $e->getMessage());
         } finally {

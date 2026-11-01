@@ -32,11 +32,54 @@
     return out;
   }
 
+  /* Proxy delivery: the server fetches the encrypted file from Postfile, decrypts it and hands out plain PDF bytes.
+     We never ask for more than 1 MiB per request (Vercel caps response sizes), so every response stays small. */
+  const PIECE = 1024 * 1024;
+  async function fetchRange(url, begin, end) {          // end is exclusive
+    let last;
+    for (let t = 0; t < 3; t++) {
+      try {
+        const res = await fetch(url, { headers: { Range: 'bytes=' + begin + '-' + (end - 1) }, credentials: 'same-origin', cache: 'no-store' });
+        if (res.status !== 206 && res.status !== 200) throw new Error('HTTP ' + res.status);
+        return new Uint8Array(await res.arrayBuffer());
+      } catch (e) { last = e; await new Promise((r) => setTimeout(r, 500 * (t + 1))); }
+    }
+    throw last;
+  }
+
+  // Streaming: PDF.js asks for the byte ranges it needs (xref, then page after page), nothing else is downloaded.
+  async function openStreaming(m) {
+    const total = m.plain_size;
+    const initial = await fetchRange(m.url, 0, Math.min(total, 4 * 262144));
+    class Transport extends pdfjsLib.PDFDataRangeTransport {
+      requestDataRange(begin, end) {
+        for (let b = begin; b < end; b += PIECE) {
+          const e = Math.min(end, b + PIECE);
+          fetchRange(m.url, b, e).then((buf) => this.onDataRange(b, buf)).catch((err) => console.error('range', b, err));
+        }
+      }
+      abort() {}
+    }
+    return pdfjsLib.getDocument({ range: new Transport(total, initial), length: total, rangeChunkSize: 262144, disableAutoFetch: true, disableStream: true }).promise;
+  }
+
+  // Fallback: download the whole PDF through the server in 1 MiB pieces, then open it from memory.
+  async function openWhole(m) {
+    const out = new Uint8Array(m.plain_size);
+    for (let off = 0; off < m.plain_size; off += PIECE) {
+      out.set(await fetchRange(m.url, off, Math.min(m.plain_size, off + PIECE)), off);
+      setLoad('Downloading…', Math.min(0.95, (off + PIECE) / m.plain_size));
+    }
+    return pdfjsLib.getDocument({ data: out }).promise;
+  }
+
   async function openDocument(m) {
     if (m.mode === 'proxy') {
       setLoad('Opening…', 0.3);
-      return pdfjsLib.getDocument({ url: m.url, withCredentials: true, disableAutoFetch: true, rangeChunkSize: 262144 }).promise;
+      try { return await openStreaming(m); }
+      catch (e) { console.warn('streaming failed, downloading the whole file instead', e); setLoad('Downloading…', 0.3); return openWhole(m); }
     }
+    // "encrypted" mode (only for file hosts that allow browser downloads, i.e. send CORS headers)
     let cipher;
     try { cipher = await fetchCipher(m.url, m.enc_size); }
     catch (e) { throw Object.assign(new Error('download'), { cause: e }); }

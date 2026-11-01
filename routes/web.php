@@ -3,6 +3,7 @@
 use App\Http\Controllers\AdminBookController;
 use App\Http\Controllers\AdminHealthController;
 use App\Http\Controllers\AdminInviteController;
+use App\Http\Controllers\AdminUploadController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LibraryController;
 use App\Http\Controllers\ReaderController;
@@ -34,6 +35,9 @@ Route::middleware('auth')->group(function () {
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', EnsureAdmin::class])->group(function () {
     Route::match(['get', 'post'], 'health', [AdminHealthController::class, 'index'])->name('health');
+    Route::post('uploads', [AdminUploadController::class, 'init'])->name('uploads.init');
+    Route::post('uploads/{upload}/pieces/{index}', [AdminUploadController::class, 'piece'])->whereNumber('index')->name('uploads.piece');
+    Route::post('uploads/{upload}/finish', [AdminUploadController::class, 'finish'])->name('uploads.finish');
     Route::resource('books', AdminBookController::class)->except(['show']);
     Route::resource('invites', AdminInviteController::class)->only(['index', 'store', 'destroy']);
 });

@@ -43,8 +43,10 @@ The page now tells you what's wrong in plain words. For technical details: Verce
 | `Cannot use the database` | `DB_URL` wrong or still the PASTE text. Copy the full string from Neon/Supabase. |
 | `tables do not exist` | `LIBRARY_AUTO_SETUP=true` missing. Add it, redeploy, open the site. |
 | `LIBRARY_MASTER_KEY ...` | Copy it exactly from `.env.vercel`. **Save that value somewhere safe: if you lose it every book is unreadable.** |
-| Book won't open / stuck on "Downloading" | Health -> Run upload test (CORS). |
-| Uploading a big PDF fails | Serverless functions limit upload size. Run the project on your PC with the same `DB_URL`, `LIBRARY_MASTER_KEY`, `POSTFILE_API_KEY` and add books there (README). |
+| `blocked by CORS policy ... cdn.postfile.download` | Old setting. Postfile does not allow browser downloads, so Librio streams books through your server instead: in Vercel set `LIBRARY_DELIVERY` = `proxy` (or delete that variable) and redeploy. |
+| Book won't open / stuck on "Opening" | Open Health and press Run upload test. Check Vercel > Logs for the failing `/books/.../stream` request. |
+| `413 FUNCTION_PAYLOAD_TOO_LARGE` on upload | Fixed: Librio now uploads in 3 MB pieces. If you still see it, you are running an old build, redeploy the latest one. |
+| Upload stops at "Sending to Postfile" | The last step sends the whole encrypted file to Postfile from the server and can hit Vercel's time limit. Press the button again (your pieces are kept). If it keeps failing, run Librio on your PC for uploads (same `DB_URL`, `LIBRARY_MASTER_KEY`, `POSTFILE_API_KEY`). |
 
 Also: `APP_DEBUG` must be `false` in Vercel (true shows technical details to everyone) and `APP_URL` must be your real address, e.g. `https://librio.unfazed.ir`.
 

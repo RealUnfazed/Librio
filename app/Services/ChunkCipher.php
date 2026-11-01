@@ -43,6 +43,31 @@ class ChunkCipher
         return $this->encrypter()->decrypt($wrapped, false);
     }
 
+    /** 16-byte file header: magic | chunk size | nonce prefix. */
+    public function header(string $prefix, int $chunk): string
+    {
+        return self::MAGIC . pack('N', $chunk) . $prefix;
+    }
+
+    /**
+     * Encrypts one upload piece. $plain must start on a chunk boundary of the whole file
+     * ($firstIndex = index of its first chunk); only the LAST piece may end on a partial chunk.
+     */
+    public function encryptPiece(string $plain, string $key, string $prefix, int $firstIndex, int $chunk): string
+    {
+        $out = '';
+        $len = strlen($plain);
+        for ($off = 0, $i = $firstIndex; $off < $len; $off += $chunk, $i++) {
+            $tag = '';
+            $ct = openssl_encrypt(substr($plain, $off, $chunk), 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $prefix . pack('N', $i), $tag, '', self::TAG);
+            if ($ct === false || strlen($tag) !== self::TAG) {
+                throw new RuntimeException('Encryption failed.');
+            }
+            $out .= $ct . $tag;
+        }
+        return $out;
+    }
+
     /** Encrypts $src into $dst. Returns sizes and the nonce prefix to store with the book. */
     public function encryptFile(string $src, string $dst, string $key, ?int $chunk = null): array
     {

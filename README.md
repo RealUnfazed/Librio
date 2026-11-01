@@ -21,18 +21,19 @@ Local PHP needs `upload_max_filesize=50M` and `post_max_size=55M`.
 
 **Read `VERCEL-SETUP.md`** (6 steps, no terminal, ready-made `.env.vercel`).
 
-Vercel mode (`LIBRARY_DELIVERY=encrypted`, already the Docker default): the browser downloads the encrypted file from the
-Postfile CDN and decrypts it in memory with a key it only receives after login.
-VPS mode (`LIBRARY_DELIVERY=proxy`): your server decrypts and streams every byte; the CDN link never reaches the browser.
+How books reach the reader (`LIBRARY_DELIVERY`, default `proxy`, also on Vercel): your server fetches the encrypted file from Postfile,
+decrypts it and streams plain PDF bytes to the browser in small pieces (max 1 MiB per response, so Vercel's response limit never applies).
+The Postfile link never reaches the browser. `encrypted` (browser downloads ciphertext directly) only works with file hosts that send CORS headers; Postfile does not.
 
 ## Security (honest version)
 Per-user watermark is drawn into every page, no download/print button, no text layer, rate limits, login required.
-A logged-in reader can still screenshot, and in Vercel mode a technical user can read the key in devtools.
+A logged-in reader can still screenshot what they see.
 This stops link sharing, scraping and casual downloading and makes leaks traceable. It cannot make copying impossible.
 
 ## Important
 * `LIBRARY_MASTER_KEY` wraps every book key. Lose it = every book unreadable. Back it up.
 * Postfile free plan: 50 MB per file, monthly upload quota, 2 GB storage. One upload per book.
-* Vercel mode downloads the whole file before reading (progress bar). Page-by-page streaming is VPS mode only.
+* Big uploads go in 3 MB pieces (works around Vercel's 4.5 MB request limit); pieces are staged in the database, then sent to Postfile in one request.
+* Every page view passes through your server, so on Vercel it counts toward Vercel's bandwidth and function-time limits.
 * Optional: run `composer install` once and commit `composer.lock` for reproducible builds.
 * Tests: `node js-tests/chunk-decrypt.test.js`, `node js-tests/range-sim.test.js`.
