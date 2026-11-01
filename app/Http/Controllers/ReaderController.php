@@ -22,6 +22,18 @@ class ReaderController extends Controller
         return hash_hmac('sha256', "stream|{$bookId}|{$userId}|{$exp}", (string) config('app.key'));
     }
 
+    private function watermark(Request $r): string
+    {
+        $domain = $r->getHost();
+        $user = $r->user();
+
+        return match (config('library.watermark')) {
+            'user' => $user->email . ' · #' . $user->id,
+            'domain-id' => $domain . ' · #' . $user->id,
+            default => $domain,
+        };
+    }
+
     public function read(Request $r, Book $book)
     {
         $this->authorizeBook($r, $book);
@@ -49,7 +61,7 @@ class ReaderController extends Controller
             'pages' => $book->pages,
             'progress' => (int) (ReadingProgress::where(['user_id' => $user->id, 'book_id' => $book->id])->value('page') ?? 1),
             'bookmarks' => Bookmark::where(['user_id' => $user->id, 'book_id' => $book->id])->orderBy('page')->pluck('page'),
-            'watermark' => $user->email . ' · #' . $user->id,
+            'watermark' => $this->watermark($r),
         ];
 
         if (config('library.delivery') === 'proxy') {

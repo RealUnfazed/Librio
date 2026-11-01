@@ -12,6 +12,12 @@ return [
     // 32 random bytes, base64. MUST be identical everywhere that shares the database.
     'master_key' => env('LIBRARY_MASTER_KEY'),
 
+    // Text drawn faintly across every page of the reader:
+    //   domain    = your site's domain, e.g. librio.unfazed.ir (default)
+    //   domain-id = domain + the reader's user number (lets you trace a leaked copy without showing an email)
+    //   user      = the reader's email + number
+    'watermark' => env('LIBRARY_WATERMARK', 'domain'),
+
     'chunk_size' => 262144, // 256 KiB of plaintext per encrypted chunk
     'upload_piece' => 3 * 1024 * 1024, // browser -> server upload piece (multiple of chunk_size, < Vercel's 4.5 MB request cap)
 

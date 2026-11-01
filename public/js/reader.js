@@ -112,7 +112,7 @@
   }
 
   function stamp(ctx, w, h, dpr) {
-    const t = S.wm + '   ' + new Date().toISOString().slice(0, 16).replace('T', ' ');
+    const t = S.wm || location.hostname;
     ctx.save();
     ctx.globalAlpha = 0.1; ctx.fillStyle = '#000';
     ctx.font = '600 ' + 14 * dpr + 'px system-ui,sans-serif'; ctx.textAlign = 'center';
