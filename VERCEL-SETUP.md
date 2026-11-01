@@ -39,10 +39,13 @@ The page now tells you what's wrong in plain words. For technical details: Verce
 | It says / log says | Fix |
 |---|---|
 | `APP_KEY is missing` / `Unsupported cipher` | Variables not saved or not redeployed (step 3-4). Value must be exactly `base64:...` from `.env.vercel`. |
+| `Database file at path [/app/database/database.sqlite] does not exist` | The app got NO database settings and fell back to SQLite (impossible on Vercel). Add `DB_CONNECTION` = `pgsql` and `DB_URL` = your Postgres connection string, then redeploy. |
 | `Cannot use the database` | `DB_URL` wrong or still the PASTE text. Copy the full string from Neon/Supabase. |
 | `tables do not exist` | `LIBRARY_AUTO_SETUP=true` missing. Add it, redeploy, open the site. |
 | `LIBRARY_MASTER_KEY ...` | Copy it exactly from `.env.vercel`. **Save that value somewhere safe: if you lose it every book is unreadable.** |
 | Book won't open / stuck on "Downloading" | Health -> Run upload test (CORS). |
 | Uploading a big PDF fails | Serverless functions limit upload size. Run the project on your PC with the same `DB_URL`, `LIBRARY_MASTER_KEY`, `POSTFILE_API_KEY` and add books there (README). |
+
+Also: `APP_DEBUG` must be `false` in Vercel (true shows technical details to everyone) and `APP_URL` must be your real address, e.g. `https://librio.unfazed.ir`.
 
 After your admin works you may delete `LIBRARY_ADMIN_PASSWORD` from Vercel and redeploy.
