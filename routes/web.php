@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminBookController;
+use App\Http\Controllers\AdminHealthController;
 use App\Http\Controllers\AdminInviteController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\LibraryController;
@@ -32,6 +33,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::prefix('admin')->name('admin.')->middleware(['auth', EnsureAdmin::class])->group(function () {
+    Route::match(['get', 'post'], 'health', [AdminHealthController::class, 'index'])->name('health');
     Route::resource('books', AdminBookController::class)->except(['show']);
     Route::resource('invites', AdminInviteController::class)->only(['index', 'store', 'destroy']);
 });

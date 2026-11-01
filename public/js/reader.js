@@ -256,9 +256,14 @@
 
   /* ---------- theme & deterrents ---------- */
   const themes = ['light', 'sepia', 'dark'];
-  function applyTheme(t) { document.documentElement.dataset.theme = t; store.set('reader-theme', t); }
+  function applyTheme(t) { document.documentElement.dataset.theme = t; store.set('theme', t); }
   $('#theme').onclick = () => applyTheme(themes[(themes.indexOf(document.documentElement.dataset.theme) + 1) % 3]);
-  applyTheme(themes.includes(store.get('reader-theme', 'light')) ? store.get('reader-theme', 'light') : 'light');
+  {
+    const saved = store.get('theme', '');
+    // no choice saved yet: follow the device setting (and don't save it until the reader taps the button)
+    document.documentElement.dataset.theme = themes.includes(saved) ? saved
+      : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
 
   // Deterrents only: they stop casual saving/printing, not a determined person.
   document.addEventListener('contextmenu', (e) => e.preventDefault());

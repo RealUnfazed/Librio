@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "local/pdf-library",
+    "name": "local/librio",
     "type": "project",
-    "description": "Online PDF library: encrypted books on Postfile, reader for mobile and desktop.",
+    "description": "Librio: online PDF library with encrypted books on Postfile and a reader for mobile and desktop.",
     "license": "MIT",
     "require": {
         "php": "^8.2",

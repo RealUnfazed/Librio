@@ -14,6 +14,13 @@ return [
 
     'chunk_size' => 262144, // 256 KiB of plaintext per encrypted chunk
 
+    // On Vercel: create the tables and the first admin automatically on the first visit.
+    'auto_setup' => env('LIBRARY_AUTO_SETUP', false),
+    'admin' => [
+        'email' => env('LIBRARY_ADMIN_EMAIL'),
+        'password' => env('LIBRARY_ADMIN_PASSWORD'),
+    ],
+
     'force_https' => env('LIBRARY_FORCE_HTTPS', false),
     'trust_proxies' => env('LIBRARY_TRUST_PROXIES', false),
 

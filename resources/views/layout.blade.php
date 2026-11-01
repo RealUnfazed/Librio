@@ -8,6 +8,7 @@
 <title>@yield('title', 'Library') · {{ config('app.name') }}</title>
 <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
 <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+@include('partials.theme-init')
 </head>
 <body>
 <header class="top">
@@ -18,8 +19,9 @@
   @auth
   <nav>
     <a href="{{ route('library') }}">Library</a>
-    @if(auth()->user()->is_admin)<a href="{{ route('admin.books.index') }}">Books</a><a href="{{ route('admin.invites.index') }}">Invites</a>@endif
+    @if(auth()->user()->is_admin)<a href="{{ route('admin.books.index') }}">Books</a><a href="{{ route('admin.invites.index') }}">Invites</a><a href="{{ route('admin.health') }}">Health</a>@endif
     <form method="post" action="{{ route('logout') }}">@csrf<button>Log out</button></form>
+    @include('partials.theme-toggle')
     <span class="avatar" title="{{ auth()->user()->email }}">{{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1)) }}</span>
   </nav>
   @endauth

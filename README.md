@@ -1,6 +1,6 @@
-# PDF Library (Laravel 12 + Postfile)
+# Librio
 
-Complete project: login/invites, library with search and categories, mobile + desktop PDF reader, admin panel.
+Librio is an online PDF library for phone and desktop (Laravel 12 + Postfile). It has login/invites, library with search and categories, mobile + desktop PDF reader, admin panel.
 Books are stored on Postfile **encrypted**, so their public CDN links are useless on their own.
 
 ## Run locally (2 minutes)
@@ -19,24 +19,7 @@ Local PHP needs `upload_max_filesize=50M` and `post_max_size=55M`.
 
 ## Deploy on Vercel
 
-1. Create a **Postgres** database (Neon, Supabase, Vercel Postgres...) and copy its connection URL.
-2. Push this repo to GitHub, import it in Vercel (it builds the `Dockerfile` through `vercel.json`).
-3. Vercel -> Settings -> Environment Variables:
-
-| Name | Value |
-|---|---|
-| `APP_KEY` | output of `php artisan key:generate --show` |
-| `APP_URL` | `https://your-project.vercel.app` |
-| `DB_CONNECTION` | `pgsql` |
-| `DB_URL` | the connection URL (add `?sslmode=require` if your host needs it) |
-| `LIBRARY_MASTER_KEY` | **the same value as in your local `.env`** |
-| `POSTFILE_API_KEY` | your Postfile key |
-| `LIBRARY_REGISTRATION` | `invite`, `open` or `closed` |
-
-4. Create the tables once, from your computer: `DB_CONNECTION=pgsql DB_URL="..." php artisan migrate --force`
-5. Create your admin the same way: `DB_CONNECTION=pgsql DB_URL="..." php artisan library:make-admin you@example.com`
-6. **Add books from your computer**, with the same `DB_URL` and `LIBRARY_MASTER_KEY` in your local `.env`.
-   The Vercel site is for reading; pushing 50 MB uploads through a serverless function is risky.
+**Read `VERCEL-SETUP.md`** (6 steps, no terminal, ready-made `.env.vercel`).
 
 Vercel mode (`LIBRARY_DELIVERY=encrypted`, already the Docker default): the browser downloads the encrypted file from the
 Postfile CDN and decrypts it in memory with a key it only receives after login.
