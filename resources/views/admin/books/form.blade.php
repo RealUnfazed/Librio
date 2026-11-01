@@ -28,14 +28,17 @@
 </form>
 
 @unless($book->exists)
+@php
+$urls = [
+    'init' => route('admin.uploads.init'),
+    'piece' => route('admin.uploads.piece', ['upload' => 'UPLOAD_ID', 'index' => 0]),
+    'finish' => route('admin.uploads.finish', ['upload' => 'UPLOAD_ID']),
+];
+@endphp
 @push('scripts')
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-const URLS = @json([
-  'init' => route('admin.uploads.init'),
-  'piece' => route('admin.uploads.piece', ['upload' => 'UPLOAD_ID', 'index' => 0]),
-  'finish' => route('admin.uploads.finish', ['upload' => 'UPLOAD_ID']),
-]);
+const URLS = @json($urls);
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 /* ---- cover + page count, read from the PDF in the browser ---- */

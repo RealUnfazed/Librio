@@ -1,10 +1,17 @@
 <?php
 
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Encryption\MissingAppKeyException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
+use Illuminate\Session\TokenMismatchException;
+use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -25,6 +32,30 @@ return Application::configure(basePath: dirname(__DIR__))
             500,
             ['Content-Type' => 'text/plain; charset=utf-8']
         );
+
+        // Logged-in ADMINS see the real error on screen (visitors still only get the generic page).
+        // Handy on Vercel where you cannot look at files; JSON requests (uploads) get it as {"message": ...}.
+        $exceptions->render(function (\Throwable $e, Request $request) {
+            if ($e instanceof HttpExceptionInterface || $e instanceof ValidationException || $e instanceof AuthenticationException
+                || $e instanceof AuthorizationException || $e instanceof TokenMismatchException || $e instanceof ModelNotFoundException) {
+                return null;
+            }
+            try {
+                $isAdmin = (bool) optional($request->user())->is_admin;
+            } catch (\Throwable) {
+                $isAdmin = false;
+            }
+            if (! $isAdmin) {
+                return null;
+            }
+
+            $where = str_replace(base_path() . '/', '', $e->getFile()) . ':' . $e->getLine();
+            $text = get_class($e) . ': ' . mb_substr($e->getMessage(), 0, 1500) . "\n at " . $where;
+
+            return $request->expectsJson()
+                ? response()->json(['message' => 'Server error: ' . $text], 500)
+                : response("Error (visible to admins only)\n\n{$text}\n\nCopy this and send it to whoever is fixing the app.", 500, ['Content-Type' => 'text/plain; charset=utf-8']);
+        });
 
         $exceptions->render(function (MissingAppKeyException $e) use ($setup) {
             return $setup('APP_KEY is missing. Add it under Vercel > Settings > Environment Variables, then redeploy.');
