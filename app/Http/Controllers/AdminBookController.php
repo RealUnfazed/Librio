@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Book;
+use App\Models\Category;
 use App\Services\ChunkCipher;
 use App\Services\PostfileClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -14,15 +16,19 @@ class AdminBookController extends Controller
 {
     public function index()
     {
-        $books = Book::select(['id', 'title', 'author', 'category', 'pages', 'plain_size', 'is_published', 'created_at'])
-            ->latest()->paginate(30);
+        $books = Book::select(['id', 'title', 'author', 'pages', 'plain_size', 'is_published', 'created_at'])
+            ->with('categories:id,name')->latest()->paginate(30);
 
         return view('admin.books.index', compact('books'));
     }
 
     public function create()
     {
-        return view('admin.books.form', ['book' => new Book(['is_published' => true])]);
+        return view('admin.books.form', [
+            'book' => new Book(['is_published' => true]),
+            'allCategories' => Category::orderBy('name')->get(),
+            'selected' => [],
+        ]);
     }
 
     private function rules(): array
@@ -30,7 +36,9 @@ class AdminBookController extends Controller
         return [
             'title' => 'required|string|max:200',
             'author' => 'nullable|string|max:200',
-            'category' => 'nullable|string|max:80',
+            'categories' => 'nullable|array|max:30',
+            'categories.*' => 'integer|exists:categories,id',
+            'new_categories' => 'nullable|string|max:400',
             'description' => 'nullable|string|max:5000',
             'pages' => 'nullable|integer|min:1|max:100000',
             'cover_data' => ['nullable', 'string', 'max:400000', 'regex:/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+\/=]+$/'],
@@ -54,22 +62,24 @@ class AdminBookController extends Controller
             $up = $postfile->upload($tmp, Str::uuid() . '.bin');
 
             try {
-                Book::create([
-                    'title' => $data['title'],
-                    'author' => $data['author'] ?? null,
-                    'category' => $data['category'] ?? null,
-                    'description' => $data['description'] ?? null,
-                    'pages' => $data['pages'] ?? null,
-                    'cover_data' => $data['cover_data'] ?? null,
-                    'postfile_id' => $up['file_id'],
-                    'postfile_url' => $up['url'],
-                    'plain_size' => $meta['plain_size'],
-                    'enc_size' => $meta['enc_size'],
-                    'chunk_size' => $meta['chunk_size'],
-                    'nonce_prefix' => $meta['nonce_prefix'],
-                    'key_enc' => $cipher->wrap($key),
-                    'is_published' => $r->boolean('is_published'),
-                ]);
+                DB::transaction(function () use ($data, $up, $meta, $cipher, $key, $r) {
+                        $book = Book::create([
+                        'title' => $data['title'],
+                        'author' => $data['author'] ?? null,
+                        'description' => $data['description'] ?? null,
+                        'pages' => $data['pages'] ?? null,
+                        'cover_data' => $data['cover_data'] ?? null,
+                        'postfile_id' => $up['file_id'],
+                        'postfile_url' => $up['url'],
+                        'plain_size' => $meta['plain_size'],
+                        'enc_size' => $meta['enc_size'],
+                        'chunk_size' => $meta['chunk_size'],
+                        'nonce_prefix' => $meta['nonce_prefix'],
+                        'key_enc' => $cipher->wrap($key),
+                        'is_published' => $r->boolean('is_published'),
+                    ]);
+                    $book->categories()->sync(Category::resolve($data['categories'] ?? [], $data['new_categories'] ?? null));
+                });
             } catch (\Throwable $e) {
                 try { $postfile->delete($up['file_id']); } catch (\Throwable) {}
                 throw $e;
@@ -85,7 +95,11 @@ class AdminBookController extends Controller
 
     public function edit(Book $book)
     {
-        return view('admin.books.form', compact('book'));
+        return view('admin.books.form', [
+            'book' => $book,
+            'allCategories' => Category::orderBy('name')->get(),
+            'selected' => $book->categories()->pluck('categories.id')->all(),
+        ]);
     }
 
     public function update(Request $r, Book $book)
@@ -94,7 +108,6 @@ class AdminBookController extends Controller
         $book->fill([
             'title' => $data['title'],
             'author' => $data['author'] ?? null,
-            'category' => $data['category'] ?? null,
             'description' => $data['description'] ?? null,
             'pages' => $data['pages'] ?? $book->pages,
             'is_published' => $r->boolean('is_published'),
@@ -103,6 +116,7 @@ class AdminBookController extends Controller
             $book->cover_data = $data['cover_data'];
         }
         $book->save();
+        $book->categories()->sync(Category::resolve($data['categories'] ?? [], $data['new_categories'] ?? null));
 
         return redirect()->route('admin.books.index')->with('status', 'Book updated.');
     }

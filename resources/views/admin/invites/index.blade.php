@@ -1,7 +1,8 @@
 @extends('layout')
 @section('title', 'Invites')
 @section('content')
-<div class="row"><h1>Invites</h1><span class="pill">Registration: {{ config('library.registration') }}</span></div>
+@include('admin._tabs', ['active' => 'invites'])
+<div class="page-head"><h1>Invites</h1><span class="pill">Registration: {{ config('library.registration') }}</span></div>
 <p class="muted">Set <code>LIBRARY_REGISTRATION</code> to <code>open</code>, <code>invite</code> or <code>closed</code>.</p>
 <div class="panel">
   <form class="inline-form" method="post" action="{{ route('admin.invites.store') }}">

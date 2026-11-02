@@ -1,6 +1,7 @@
 @extends('layout')
 @section('title', $book->exists ? 'Edit book' : 'Add book')
 @section('content')
+@include('admin._tabs', ['active' => 'books'])
 <form id="bookForm" class="panel form-wide" method="post" enctype="multipart/form-data"
       action="{{ $book->exists ? route('admin.books.update', $book) : route('admin.books.store') }}">
   @csrf
@@ -14,7 +15,17 @@
 
   <label>Title<input name="title" id="title" value="{{ old('title', $book->title) }}" required dir="auto"></label>
   <label>Author<input name="author" value="{{ old('author', $book->author) }}" dir="auto"></label>
-  <label>Category<input name="category" value="{{ old('category', $book->category) }}" dir="auto"></label>
+  <fieldset class="catpick">
+    <legend>Categories <span class="muted">(a book can have several)</span></legend>
+    @if($allCategories->isNotEmpty())
+    <div class="chips">
+      @foreach($allCategories as $c)
+        <label class="chipcheck"><input type="checkbox" name="categories[]" value="{{ $c->id }}" @checked(in_array($c->id, old('categories', $selected)))><span dir="auto">{{ $c->name }}</span></label>
+      @endforeach
+    </div>
+    @endif
+    <input name="new_categories" value="{{ old('new_categories') }}" placeholder="New categories, separated by commas" dir="auto">
+  </fieldset>
   <label>Description<textarea name="description" rows="5" dir="auto">{{ old('description', $book->description) }}</textarea></label>
   <label>Pages<input type="number" name="pages" id="pages" value="{{ old('pages', $book->pages) }}" min="1"></label>
   <input type="hidden" name="cover_data" id="cover_data">
@@ -110,7 +121,9 @@ form.addEventListener('submit', async (e) => {
     bar.removeAttribute('value');
     const f = form.elements;
     const meta = {
-      title: f['title'].value, author: f['author'].value, category: f['category'].value, description: f['description'].value,
+      title: f['title'].value, author: f['author'].value, description: f['description'].value,
+      categories: Array.from(form.querySelectorAll('input[name="categories[]"]:checked')).map((i) => +i.value),
+      new_categories: f['new_categories'].value,
       pages: f['pages'].value || null, cover_data: f['cover_data'].value || null, is_published: f['is_published'].checked,
     };
     const j = await json(await fetch(URLS.finish.replace('UPLOAD_ID', session.id), { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify(meta) }));

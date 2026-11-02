@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Book;
+use App\Models\Category;
 use App\Models\UploadSession;
 use App\Services\ChunkCipher;
 use App\Services\PostfileClient;
@@ -86,7 +87,9 @@ class AdminUploadController extends Controller
         $d = $r->validate([
             'title' => 'required|string|max:200',
             'author' => 'nullable|string|max:200',
-            'category' => 'nullable|string|max:80',
+            'categories' => 'nullable|array|max:30',
+            'categories.*' => 'integer|exists:categories,id',
+            'new_categories' => 'nullable|string|max:400',
             'description' => 'nullable|string|max:5000',
             'pages' => 'nullable|integer|min:1|max:100000',
             'cover_data' => ['nullable', 'string', 'max:400000', 'regex:/^data:image\/(webp|jpeg|png);base64,[A-Za-z0-9+\/=]+$/'],
@@ -123,22 +126,24 @@ class AdminUploadController extends Controller
         }
 
         try {
-            Book::create([
-                'title' => $d['title'],
-                'author' => $d['author'] ?? null,
-                'category' => $d['category'] ?? null,
-                'description' => $d['description'] ?? null,
-                'pages' => $d['pages'] ?? null,
-                'cover_data' => $d['cover_data'] ?? null,
-                'postfile_id' => $up['file_id'],
-                'postfile_url' => $up['url'],
-                'plain_size' => $s->plain_size,
-                'enc_size' => $encSize,
-                'chunk_size' => $chunk,
-                'nonce_prefix' => $s->nonce_prefix,
-                'key_enc' => $s->key_enc,
-                'is_published' => $r->boolean('is_published'),
-            ]);
+            DB::transaction(function () use ($d, $s, $up, $encSize, $chunk, $r) {
+                $book = Book::create([
+                    'title' => $d['title'],
+                    'author' => $d['author'] ?? null,
+                    'description' => $d['description'] ?? null,
+                    'pages' => $d['pages'] ?? null,
+                    'cover_data' => $d['cover_data'] ?? null,
+                    'postfile_id' => $up['file_id'],
+                    'postfile_url' => $up['url'],
+                    'plain_size' => $s->plain_size,
+                    'enc_size' => $encSize,
+                    'chunk_size' => $chunk,
+                    'nonce_prefix' => $s->nonce_prefix,
+                    'key_enc' => $s->key_enc,
+                    'is_published' => $r->boolean('is_published'),
+                ]);
+                $book->categories()->sync(Category::resolve($d['categories'] ?? [], $d['new_categories'] ?? null));
+            });
         } catch (\Throwable $e) {
             try { $postfile->delete($up['file_id']); } catch (\Throwable) {}
             throw $e;

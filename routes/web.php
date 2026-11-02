@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminBookController;
 use App\Http\Controllers\AdminHealthController;
 use App\Http\Controllers\AdminInviteController;
@@ -23,6 +24,8 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->n
 
 Route::middleware('auth')->group(function () {
     Route::get('/library', [LibraryController::class, 'index'])->name('library');
+    Route::get('/search', [LibraryController::class, 'search'])->name('search');
+    Route::get('/account', [AccountController::class, 'show'])->name('account');
     Route::get('/books/{book}', [LibraryController::class, 'show'])->name('books.show');
     Route::get('/books/{book}/cover', [LibraryController::class, 'cover'])->name('books.cover');
 

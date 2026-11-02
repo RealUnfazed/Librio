@@ -25,6 +25,10 @@ How books reach the reader (`LIBRARY_DELIVERY`, default `proxy`, also on Vercel)
 decrypts it and streams plain PDF bytes to the browser in small pieces (max 1 MiB per response, so Vercel's response limit never applies).
 The Postfile link never reaches the browser. `encrypted` (browser downloads ciphertext directly) only works with file hosts that send CORS headers; Postfile does not.
 
+## Categories
+
+A book can have several categories (tick existing ones or type new ones, comma separated, in Add/Edit book). The home page shows one shelf per category; Search can filter by several at once. Books you already had keep their old category automatically on the next deploy.
+
 ## Android
 
 See `ANDROID.md`: install from Chrome in 30 seconds, or build a real APK (screenshots blocked) with GitHub Actions.

@@ -11,7 +11,7 @@
     <h1 dir="auto">{{ $book->title }}</h1>
     @if($book->author)<p class="muted" style="font-size:1.1rem;margin:6px 0 0" dir="auto">{{ $book->author }}</p>@endif
     <div class="facts">
-      @if($book->category)<span class="fact" dir="auto">{{ $book->category }}</span>@endif
+      @foreach($book->categories as $c)<a class="chip" dir="auto" href="{{ route('search', ['cat' => [$c->id]]) }}">{{ $c->name }}</a>@endforeach
       @if($book->pages)<span class="fact">{{ $book->pages }} pages</span>@endif
       <span class="fact">{{ number_format($book->plain_size / 1048576, 1) }} MB</span>
     </div>

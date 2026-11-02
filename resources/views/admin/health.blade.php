@@ -1,7 +1,8 @@
 @extends('layout')
 @section('title', 'Health')
 @section('content')
-<div class="row"><h1>Health check</h1></div>
+@include('admin._tabs', ['active' => 'health'])
+<div class="page-head"><h1>Health check</h1></div>
 <div class="panel">
   @foreach($results as $r)
     <p style="margin:.5em 0">

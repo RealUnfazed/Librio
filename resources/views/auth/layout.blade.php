@@ -17,5 +17,6 @@
   @if($errors->any())<div class="flash err">@foreach($errors->all() as $e)<div>{{ $e }}</div>@endforeach</div>@endif
   @yield('content')
 </div>
+@include('partials.theme-script')
 </body>
 </html>
