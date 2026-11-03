@@ -21,7 +21,7 @@ class LibraryDoctor
         try {
             DB::connection()->getPdo();
             $add(true, 'Database connected (' . config('database.default') . ')');
-            $need = ['users', 'books', 'invites', 'bookmarks', 'reading_progress', 'cache', 'upload_sessions', 'upload_pieces', 'categories', 'book_category'];
+            $need = ['users', 'books', 'invites', 'bookmarks', 'reading_progress', 'cache', 'upload_sessions', 'upload_pieces', 'categories', 'book_category', 'authors', 'author_book'];
             $missing = array_values(array_filter($need, fn ($t) => ! Schema::hasTable($t)));
             $add(! $missing, $missing
                 ? 'Tables missing: ' . implode(', ', $missing) . '. Set LIBRARY_AUTO_SETUP=true and redeploy.'

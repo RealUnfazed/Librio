@@ -10,6 +10,7 @@
   const S = {
     pdf: null, n: 0, scale: 1, fit: true, page: 1, gen: 0, wm: '',
     base: null, dims: {}, bookmarks: new Set(), text: {}, searchGen: 0, els: [],
+    mode: null, fb: null, rtl: false, io: null,
   };
   pdfjsLib.GlobalWorkerOptions.workerSrc = R.workerSrc;
 
@@ -156,6 +157,7 @@
         if (e.isIntersecting) render(el); else release(el);
       }
     }, { root: viewer, rootMargin: '150% 0px' });
+    S.io = io;
     for (let i = 1; i <= S.n; i++) {
       const el = document.createElement('div');
       el.className = 'page'; el.dataset.n = i;
@@ -166,6 +168,7 @@
   /* ---------- navigation ---------- */
   function goTo(n) {
     n = Math.min(Math.max(1, n | 0), S.n);
+    if (S.mode === 'book') { if (S.fb) S.fb.goTo(n); return; }
     viewer.scrollTop = S.els[n - 1].offsetTop - 12;
     setPage(n, true);
   }
@@ -202,7 +205,11 @@
   }, { passive: false });
   let resizeT; window.addEventListener('resize', () => {
     clearTimeout(resizeT);
-    resizeT = setTimeout(() => { if (S.fit && S.pdf) { const k = S.page; layout(); goTo(k); } }, 200);
+    resizeT = setTimeout(() => {
+      if (!S.pdf) return;
+      if (S.mode === 'book') { if (S.fb) S.fb.resize(); return; }
+      if (S.fit) { const k = S.page; layout(); goTo(k); }
+    }, 200);
   });
   // pinch to zoom (applied when the fingers lift)
   let pd = 0, last = 0;
@@ -210,6 +217,65 @@
   viewer.addEventListener('touchstart', (e) => { if (e.touches.length === 2) pd = last = dist(e.touches); }, { passive: true });
   viewer.addEventListener('touchmove', (e) => { if (e.touches.length === 2) { e.preventDefault(); last = dist(e.touches); } }, { passive: false });
   viewer.addEventListener('touchend', (e) => { if (pd && e.touches.length < 2) { setScale(S.scale * (last / pd)); pd = 0; } });
+
+
+  /* ---------- book mode: pages turn like a real book (see flipbook.js) ---------- */
+  const bookEl = $('#book');
+  function renderBook(p, host, pw, ph, valid) {
+    const tok = host._tok = (host._tok || 0) + 1;       // a newer render / a release cancels an older one
+    (async () => {
+      try {
+        const page = await S.pdf.getPage(p);
+        const v1 = page.getViewport({ scale: 1 });
+        const dpr = Math.min(window.devicePixelRatio || 1, 2);
+        const vp = page.getViewport({ scale: (pw * dpr) / v1.width });
+        const c = document.createElement('canvas'); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
+        const ctx = c.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport: vp }).promise;
+        stamp(ctx, c.width, c.height, dpr);               // the watermark is part of the pixels
+        if (!valid() || host._tok !== tok) { c.width = 0; return; }
+        host.textContent = ''; host.appendChild(c);
+      } catch (e) { console.warn('book page', p, e); }
+    })();
+  }
+  function releaseBook(p, host) {
+    host._tok = (host._tok || 0) + 1;
+    const c = host.querySelector('canvas');
+    if (c) { c.width = 0; c.height = 0; c.remove(); }
+  }
+  function startBook(page) {
+    S.mode = 'book';
+    viewer.hidden = true; bookEl.hidden = false;
+    document.body.classList.add('mode-book'); document.body.classList.remove('mode-scroll');
+    S.fb = new window.FlipBook($('#fbStage'), {
+      pages: S.n, ratio: S.base[1] / S.base[0], rtl: S.rtl, start: page,
+      render: renderBook, release: releaseBook,
+      onChange: (vis, atStart, atEnd) => {
+        if (vis.length) setPage(vis[vis.length - 1], true);   // show the right-hand page of a spread
+        $('#fbPrev').disabled = S.rtl ? atEnd : atStart;   // left arrow
+        $('#fbNext').disabled = S.rtl ? atStart : atEnd;   // right arrow
+      },
+    });
+  }
+  function startScroll(page) {
+    if (S.fb) { S.fb.destroy(); S.fb = null; }
+    S.mode = 'scroll';
+    bookEl.hidden = true; viewer.hidden = false;
+    document.body.classList.add('mode-scroll'); document.body.classList.remove('mode-book');
+    buildPages(); layout(); goTo(page);
+  }
+  function startMode(m, page) {
+    if (S.mode === 'scroll') { if (S.io) S.io.disconnect(); pagesEl.textContent = ''; S.els = []; }
+    (m === 'book' && window.FlipBook ? startBook : startScroll)(page);
+  }
+  $('#mode').onclick = () => { const m = S.mode === 'book' ? 'scroll' : 'book'; startMode(m, S.page); store.set('reader-mode', m); };
+  $('#rtl').onclick = () => {
+    S.rtl = !S.rtl; store.set('rtl:' + R.bookId, S.rtl ? '1' : '0');
+    $('#rtl').classList.toggle('on', S.rtl);
+    if (S.fb) S.fb.setRtl(S.rtl);
+  };
+  $('#fbPrev').onclick = () => { if (S.fb) S.fb.visual(-1); };
+  $('#fbNext').onclick = () => { if (S.fb) S.fb.visual(1); };
 
   /* ---------- progress ---------- */
   let saveT;
@@ -335,9 +401,10 @@
     const first = await S.pdf.getPage(1), v = first.getViewport({ scale: 1 });
     S.base = [v.width, v.height]; S.dims[1] = S.base;
     $('#pageTotal').textContent = S.n; $('#pageInput').max = S.n;
-    buildPages(); layout();
+    S.rtl = store.get('rtl:' + R.bookId, '') === '1';
+    $('#rtl').classList.toggle('on', S.rtl);
+    startMode(store.get('reader-mode', 'book'), Math.min(m.progress || 1, S.n));
     $('#loader').hidden = true;
-    goTo(Math.min(m.progress || 1, S.n));
     renderBms(); loadOutline();
   })();
 })();

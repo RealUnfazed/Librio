@@ -44,6 +44,7 @@ class ReaderController extends Controller
             'bookmarkUrl' => route('books.bookmark', $book),
             'workerSrc' => 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
             'csrf' => csrf_token(),
+            'bookId' => $book->id,
         ];
 
         return view('library.reader', compact('book', 'cfg'));

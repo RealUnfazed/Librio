@@ -14,7 +14,14 @@
   @endunless
 
   <label>Title<input name="title" id="title" value="{{ old('title', $book->title) }}" required dir="auto"></label>
-  <label>Author<input name="author" value="{{ old('author', $book->author) }}" dir="auto"></label>
+  <label>Authors <span class="muted" style="font-weight:400">(several writers: separate with commas)</span>
+    <input name="authors" id="authors" value="{{ old('authors', $authorsText) }}" placeholder="Ann Lee, Bo Chen" dir="auto" autocomplete="off">
+  </label>
+  @if($authorSuggestions->isNotEmpty())
+  <div class="chips" style="margin:-6px 0 12px">
+    @foreach($authorSuggestions as $name)<button type="button" class="chip sm js-addauthor" dir="auto">{{ $name }}</button>@endforeach
+  </div>
+  @endif
   <fieldset class="catpick">
     <legend>Categories <span class="muted">(a book can have several)</span></legend>
     @if($allCategories->isNotEmpty())
@@ -37,6 +44,17 @@
   <button class="btn" id="save">{{ $book->exists ? 'Save changes' : 'Encrypt & upload' }}</button>
   @unless($book->exists)<p class="muted" style="font-size:.86rem">Big files are sent in small pieces, then encrypted and passed to Postfile. Keep this page open until it finishes.</p>@endunless
 </form>
+
+<script>
+document.querySelectorAll('.js-addauthor').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var i = document.getElementById('authors'), name = b.textContent.trim();
+    var list = i.value.split(/[,،;]+/).map(function (x) { return x.trim(); }).filter(Boolean);
+    if (list.indexOf(name) === -1) list.push(name);
+    i.value = list.join(', ');
+  });
+});
+</script>
 
 @unless($book->exists)
 @php
@@ -121,7 +139,7 @@ form.addEventListener('submit', async (e) => {
     bar.removeAttribute('value');
     const f = form.elements;
     const meta = {
-      title: f['title'].value, author: f['author'].value, description: f['description'].value,
+      title: f['title'].value, authors: f['authors'].value, description: f['description'].value,
       categories: Array.from(form.querySelectorAll('input[name="categories[]"]:checked')).map((i) => +i.value),
       new_categories: f['new_categories'].value,
       pages: f['pages'].value || null, cover_data: f['cover_data'].value || null, is_published: f['is_published'].checked,

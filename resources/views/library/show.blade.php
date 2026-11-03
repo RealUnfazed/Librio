@@ -9,7 +9,13 @@
   </div>
   <div>
     <h1 dir="auto">{{ $book->title }}</h1>
-    @if($book->author)<p class="muted" style="font-size:1.1rem;margin:6px 0 0" dir="auto">{{ $book->author }}</p>@endif
+    @if($book->authors->isNotEmpty() || $book->authorLine() !== '')
+    <p class="byline">
+      @forelse($book->authors->sortBy('pivot.position') as $a)<a href="{{ route('search', ['author' => $a->id]) }}" dir="auto">{{ $a->name }}</a>@if(! $loop->last)<span class="sep">,</span> @endif
+      @empty<span dir="auto">{{ $book->authorLine() }}</span>
+      @endforelse
+    </p>
+    @endif
     <div class="facts">
       @foreach($book->categories as $c)<a class="chip" dir="auto" href="{{ route('search', ['cat' => [$c->id]]) }}">{{ $c->name }}</a>@endforeach
       @if($book->pages)<span class="fact">{{ $book->pages }} pages</span>@endif

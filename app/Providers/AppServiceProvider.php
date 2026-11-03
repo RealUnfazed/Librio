@@ -36,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
         }
 
         try {
-            if (! Schema::hasTable('book_category')) {   // newest table: creates anything still missing
+            if (! Schema::hasTable('author_book')) {   // newest table: creates anything still missing
                 Artisan::call('migrate', ['--force' => true]);
             }
 

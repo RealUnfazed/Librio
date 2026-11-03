@@ -1,1 +1,1 @@
-<script>try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'||t==='sepia')document.documentElement.dataset.theme=t}catch(e){}</script>
+<script>try{var t=localStorage.getItem('theme');if(t==='light'||t==='dark'||t==='sepia')document.documentElement.dataset.theme=t}catch(e){}try{var v=localStorage.getItem('lib-view');if(v==='spines'||v==='covers'||v==='cards')document.documentElement.dataset.view=v}catch(e){}</script>

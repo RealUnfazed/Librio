@@ -24,4 +24,34 @@ class Book extends Model
     {
         return $this->belongsToMany(Category::class);
     }
+
+    public function authors(): BelongsToMany
+    {
+        return $this->belongsToMany(Author::class)->withPivot('position');
+    }
+
+    /** Replaces the writers with a comma separated list, keeping the typed order. */
+    public function setAuthors(?string $names): void
+    {
+        $ids = Author::resolve($names);
+        $sync = $ids ? array_combine($ids, array_map(fn ($i) => ['position' => $i], array_keys($ids))) : [];
+        $this->authors()->sync($sync);
+        $this->forceFill(['author' => null])->save(); // the old single-text column is no longer used
+    }
+
+    /** @return string[] writers in order (falls back to the old single "author" text if there is no list yet) */
+    public function authorNames(): array
+    {
+        if ($this->relationLoaded('authors') && $this->authors->isNotEmpty()) {
+            return $this->authors->sortBy('pivot.position')->pluck('name')->values()->all();
+        }
+        $legacy = trim((string) ($this->attributes['author'] ?? ''));
+
+        return $legacy === '' ? [] : [$legacy];
+    }
+
+    public function authorLine(): string
+    {
+        return implode(', ', $this->authorNames());
+    }
 }

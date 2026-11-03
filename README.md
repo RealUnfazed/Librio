@@ -29,6 +29,18 @@ The Postfile link never reaches the browser. `encrypted` (browser downloads ciph
 
 A book can have several categories (tick existing ones or type new ones, comma separated, in Add/Edit book). The home page shows one shelf per category; Search can filter by several at once. Books you already had keep their old category automatically on the next deploy.
 
+## Writers
+
+A book can have several writers: type them comma separated in Add/Edit book (click a known name to add it). Order is kept, each name on the book page links to all books by that writer, and search also matches writers. Old single-author text is converted automatically on the next deploy.
+
+## Bookshelf view
+
+The Library and Search pages show books standing on wooden shelves: **Spines** (thickness follows the page count), **Covers**, or plain **Cards**. The choice is remembered per device.
+
+## Reader: book view
+
+The reader opens like a real book: a two-page spread with page turns on wide screens, one page at a time on phones. Tap/click the sides, swipe, use the arrow keys, Home/End, or type a page number. The book button switches to continuous scrolling, and the arrows button marks a book as **right-to-left** (Persian, Arabic, Hebrew); both choices are remembered. Scroll view keeps zoom and pinch.
+
 ## Android
 
 See `ANDROID.md`: install from Chrome in 30 seconds, or build a real APK (screenshots blocked) with GitHub Actions.

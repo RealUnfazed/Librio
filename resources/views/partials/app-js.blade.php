@@ -7,6 +7,16 @@
     if (!a || e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.button || a.target || a.hasAttribute('download')) return;
     if (a.origin === location.origin && a.pathname + a.search !== location.pathname + location.search) root.classList.add('nav-loading');
   });
+  var vb = document.querySelectorAll('[data-viewset] button');
+  function markView() { var cur = root.dataset.view || 'spines'; vb.forEach(function (b) { b.classList.toggle('on', b.dataset.v === cur); }); }
+  vb.forEach(function (b) {
+    b.addEventListener('click', function () {
+      root.dataset.view = b.dataset.v;
+      try { localStorage.setItem('lib-view', b.dataset.v); } catch (e) {}
+      markView();
+    });
+  });
+  markView();
   document.querySelectorAll('.shelf-btn').forEach(function (b) {
     b.addEventListener('click', function () {
       var s = document.getElementById(b.dataset.target);

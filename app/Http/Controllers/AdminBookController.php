@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Author;
 use App\Models\Book;
 use App\Models\Category;
 use App\Services\ChunkCipher;
@@ -17,7 +18,7 @@ class AdminBookController extends Controller
     public function index()
     {
         $books = Book::select(['id', 'title', 'author', 'pages', 'plain_size', 'is_published', 'created_at'])
-            ->with('categories:id,name')->latest()->paginate(30);
+            ->with(['categories:id,name', 'authors:id,name'])->latest()->paginate(30);
 
         return view('admin.books.index', compact('books'));
     }
@@ -28,6 +29,8 @@ class AdminBookController extends Controller
             'book' => new Book(['is_published' => true]),
             'allCategories' => Category::orderBy('name')->get(),
             'selected' => [],
+            'authorsText' => '',
+            'authorSuggestions' => Author::orderBy('name')->limit(40)->pluck('name'),
         ]);
     }
 
@@ -35,7 +38,7 @@ class AdminBookController extends Controller
     {
         return [
             'title' => 'required|string|max:200',
-            'author' => 'nullable|string|max:200',
+            'authors' => 'nullable|string|max:500',
             'categories' => 'nullable|array|max:30',
             'categories.*' => 'integer|exists:categories,id',
             'new_categories' => 'nullable|string|max:400',
@@ -65,8 +68,7 @@ class AdminBookController extends Controller
                 DB::transaction(function () use ($data, $up, $meta, $cipher, $key, $r) {
                         $book = Book::create([
                         'title' => $data['title'],
-                        'author' => $data['author'] ?? null,
-                        'description' => $data['description'] ?? null,
+                            'description' => $data['description'] ?? null,
                         'pages' => $data['pages'] ?? null,
                         'cover_data' => $data['cover_data'] ?? null,
                         'postfile_id' => $up['file_id'],
@@ -79,6 +81,7 @@ class AdminBookController extends Controller
                         'is_published' => $r->boolean('is_published'),
                     ]);
                     $book->categories()->sync(Category::resolve($data['categories'] ?? [], $data['new_categories'] ?? null));
+                    $book->setAuthors($data['authors'] ?? null);
                 });
             } catch (\Throwable $e) {
                 try { $postfile->delete($up['file_id']); } catch (\Throwable) {}
@@ -99,6 +102,8 @@ class AdminBookController extends Controller
             'book' => $book,
             'allCategories' => Category::orderBy('name')->get(),
             'selected' => $book->categories()->pluck('categories.id')->all(),
+            'authorsText' => implode(', ', $book->load('authors')->authorNames()),
+            'authorSuggestions' => Author::orderBy('name')->limit(40)->pluck('name'),
         ]);
     }
 
@@ -107,7 +112,6 @@ class AdminBookController extends Controller
         $data = $r->validate($this->rules());
         $book->fill([
             'title' => $data['title'],
-            'author' => $data['author'] ?? null,
             'description' => $data['description'] ?? null,
             'pages' => $data['pages'] ?? $book->pages,
             'is_published' => $r->boolean('is_published'),
@@ -117,6 +121,7 @@ class AdminBookController extends Controller
         }
         $book->save();
         $book->categories()->sync(Category::resolve($data['categories'] ?? [], $data['new_categories'] ?? null));
+        $book->setAuthors($data['authors'] ?? null);
 
         return redirect()->route('admin.books.index')->with('status', 'Book updated.');
     }

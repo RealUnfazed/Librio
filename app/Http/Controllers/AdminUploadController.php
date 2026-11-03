@@ -86,7 +86,7 @@ class AdminUploadController extends Controller
         $s = UploadSession::where('id', $upload)->where('user_id', $r->user()->id)->firstOrFail();
         $d = $r->validate([
             'title' => 'required|string|max:200',
-            'author' => 'nullable|string|max:200',
+            'authors' => 'nullable|string|max:500',
             'categories' => 'nullable|array|max:30',
             'categories.*' => 'integer|exists:categories,id',
             'new_categories' => 'nullable|string|max:400',
@@ -129,7 +129,6 @@ class AdminUploadController extends Controller
             DB::transaction(function () use ($d, $s, $up, $encSize, $chunk, $r) {
                 $book = Book::create([
                     'title' => $d['title'],
-                    'author' => $d['author'] ?? null,
                     'description' => $d['description'] ?? null,
                     'pages' => $d['pages'] ?? null,
                     'cover_data' => $d['cover_data'] ?? null,
@@ -143,6 +142,7 @@ class AdminUploadController extends Controller
                     'is_published' => $r->boolean('is_published'),
                 ]);
                 $book->categories()->sync(Category::resolve($d['categories'] ?? [], $d['new_categories'] ?? null));
+                $book->setAuthors($d['authors'] ?? null);
             });
         } catch (\Throwable $e) {
             try { $postfile->delete($up['file_id']); } catch (\Throwable) {}

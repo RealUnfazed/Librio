@@ -17,6 +17,8 @@
 </div>
 @endif
 
+@include('partials.view-toggle')
+
 @if($continue->isNotEmpty())
   @include('partials.shelf-head', ['id' => 'shelf-continue', 'title' => 'Continue reading'])
   <div class="shelf" id="shelf-continue">
@@ -26,10 +28,14 @@
 
 @forelse($shelves as $i => $shelf)
   @php($title = ($shelf['id'] === null && $shelves->count() === 1) ? 'All books' : $shelf['name'])
-  @include('partials.shelf-head', array_merge(['id' => 'shelf-'.$i, 'title' => $title, 'count' => $shelf['total']], $shelf['id'] ? ['link' => route('search', ['cat' => [$shelf['id']]])] : []))
-  <div class="shelf" id="shelf-{{ $i }}">
-    @foreach($shelf['books'] as $book) @include('partials.card', ['book' => $book]) @endforeach
+  @php($shelfLink = $shelf['id'] ? route('search', ['cat' => [$shelf['id']]]) : null)
+  <div class="card-shelves">
+    @include('partials.shelf-head', array_merge(['id' => 'shelf-'.$i, 'title' => $title, 'count' => $shelf['total']], $shelfLink ? ['link' => $shelfLink] : []))
+    <div class="shelf" id="shelf-{{ $i }}">
+      @foreach($shelf['books'] as $book) @include('partials.card', ['book' => $book]) @endforeach
+    </div>
   </div>
+  @include('partials.bookcase', array_merge(['books' => $shelf['books'], 'title' => $title, 'count' => $shelf['total']], $shelfLink ? ['link' => $shelfLink] : []))
 @empty
   <div class="empty" style="margin-top:28px">No books yet.@if(auth()->user()->is_admin) <a href="{{ route('admin.books.create') }}">Add the first one</a>.@endif</div>
 @endforelse
