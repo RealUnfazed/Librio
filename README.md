@@ -39,7 +39,10 @@ The Library and Search pages show books standing on wooden shelves: **Spines** (
 
 ## Reader: book view
 
-The reader opens like a real book: a two-page spread with page turns on wide screens, one page at a time on phones. Tap/click the sides, swipe, use the arrow keys, Home/End, or type a page number. The book button switches to continuous scrolling, and the arrows button marks a book as **right-to-left** (Persian, Arabic, Hebrew); both choices are remembered. Scroll view keeps zoom and pinch.
+The reader opens like a real book with a **page curl** (like FlipHTML5): a two-page spread with a front cover on wide screens, one page at a time on phones.
+Drag any page corner and the paper folds under your finger or mouse (let go past the middle, or flick, to finish the turn; otherwise it springs back).
+Hover a corner and it peeks. Click or tap a side, swipe, use the arrow keys, PageUp/PageDown, Home/End, or type a page number.
+The book button switches to continuous scrolling (zoom and pinch live there), and the arrows button marks a book as **right-to-left** (Persian, Arabic, Hebrew). Both choices are remembered.
 
 ## Android
 

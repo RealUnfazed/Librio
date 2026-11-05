@@ -182,6 +182,7 @@
     if (ticking) return; ticking = true;
     requestAnimationFrame(() => {
       ticking = false;
+      if (S.mode !== 'scroll' || !S.els.length) return;   // a late event from the hidden scroll view must not change the page
       const y = viewer.scrollTop + viewer.clientHeight * 0.3;
       let lo = 0, hi = S.els.length - 1;
       while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (S.els[mid].offsetTop <= y) lo = mid; else hi = mid - 1; }
@@ -189,7 +190,7 @@
     });
   }, { passive: true });
 
-  $('#pageInput').addEventListener('change', (e) => goTo(+e.target.value));
+  $('#pageInput').addEventListener('change', (e) => { goTo(+e.target.value); e.target.blur(); });   // blur: arrow keys work again right away
 
   /* ---------- zoom ---------- */
   function setScale(s) {
@@ -221,8 +222,7 @@
 
   /* ---------- book mode: pages turn like a real book (see flipbook.js) ---------- */
   const bookEl = $('#book');
-  function renderBook(p, host, pw, ph, valid) {
-    const tok = host._tok = (host._tok || 0) + 1;       // a newer render / a release cancels an older one
+  function renderBook(p, done, pw, ph, valid) {
     (async () => {
       try {
         const page = await S.pdf.getPage(p);
@@ -233,23 +233,21 @@
         const ctx = c.getContext('2d');
         await page.render({ canvasContext: ctx, viewport: vp }).promise;
         stamp(ctx, c.width, c.height, dpr);               // the watermark is part of the pixels
-        if (!valid() || host._tok !== tok) { c.width = 0; return; }
-        host.textContent = ''; host.appendChild(c);
+        if (!valid()) { c.width = 0; return; }
+        done(c);
       } catch (e) { console.warn('book page', p, e); }
     })();
   }
-  function releaseBook(p, host) {
-    host._tok = (host._tok || 0) + 1;
-    const c = host.querySelector('canvas');
-    if (c) { c.width = 0; c.height = 0; c.remove(); }
-  }
+  function releaseBook(p, canvas) { if (canvas) { canvas.width = 0; canvas.height = 0; } }
+  // dark / sepia themes are applied to the page images themselves (the book is drawn on one canvas)
+  const themeFilter = () => ({ dark: 'invert(.9) hue-rotate(180deg)', sepia: 'sepia(.55) brightness(.96)' }[document.documentElement.dataset.theme] || '');
   function startBook(page) {
     S.mode = 'book';
     viewer.hidden = true; bookEl.hidden = false;
     document.body.classList.add('mode-book'); document.body.classList.remove('mode-scroll');
     S.fb = new window.FlipBook($('#fbStage'), {
       pages: S.n, ratio: S.base[1] / S.base[0], rtl: S.rtl, start: page,
-      render: renderBook, release: releaseBook,
+      render: renderBook, release: releaseBook, filter: themeFilter,
       onChange: (vis, atStart, atEnd) => {
         if (vis.length) setPage(vis[vis.length - 1], true);   // show the right-hand page of a spread
         $('#fbPrev').disabled = S.rtl ? atEnd : atStart;   // left arrow
@@ -365,7 +363,7 @@
 
   /* ---------- theme & deterrents ---------- */
   const themes = ['light', 'sepia', 'dark'];
-  function applyTheme(t) { document.documentElement.dataset.theme = t; store.set('theme', t); }
+  function applyTheme(t) { document.documentElement.dataset.theme = t; store.set('theme', t); if (S.fb) S.fb.retheme(); }
   $('#theme').onclick = () => applyTheme(themes[(themes.indexOf(document.documentElement.dataset.theme) + 1) % 3]);
   {
     const saved = store.get('theme', '');
