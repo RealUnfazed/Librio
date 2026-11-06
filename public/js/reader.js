@@ -95,13 +95,14 @@
     const d = S.dims[n] || S.base;
     return [d[0] * S.scale, d[1] * S.scale];
   }
-  function layout() {
+  function layout(keep) {
     S.gen++;
     if (S.fit) S.scale = Math.max(0.3, (viewer.clientWidth - 24) / S.base[0]);
     S.els.forEach((el, i) => {
       const [w, h] = pageSize(i + 1);
       el.style.width = w + 'px'; el.style.height = h + 'px';
-      release(el);
+      if (keep) el._stale = true;      // zoom/resize: leave the old picture (stretched) until the sharp one is ready, no white flash
+      else release(el);
     });
     S.els.forEach((el) => { if (el._vis) render(el); });
   }
@@ -109,7 +110,7 @@
   function release(el) {
     const c = el.querySelector('canvas');
     if (c) { c.width = 0; c.height = 0; c.remove(); }
-    el._done = false;
+    el._done = false; el._stale = false;
   }
 
   function stamp(ctx, w, h, dpr) {
@@ -127,7 +128,7 @@
   }
 
   async function render(el) {
-    if (el._done || el._busy) return;
+    if ((el._done && !el._stale) || el._busy) return;
     el._busy = true;
     const gen = S.gen, n = +el.dataset.n;
     try {
@@ -139,15 +140,17 @@
       }
       if (gen !== S.gen || !el._vis) return;
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const vp = page.getViewport({ scale: S.scale * dpr });
-      const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+      const cap = Math.min(1, 3600 / (v1.width * S.scale * dpr));        // very deep zoom: cap the canvas size, it is just stretched a little
+      const vp = page.getViewport({ scale: S.scale * dpr * cap });
+      const c = document.createElement('canvas'); c.width = Math.ceil(vp.width); c.height = Math.ceil(vp.height);
       const ctx = c.getContext('2d');
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      stamp(ctx, vp.width, vp.height, dpr);        // baked into the pixels, can't be removed via devtools
+      stamp(ctx, c.width, c.height, dpr * cap);    // baked into the pixels, can't be removed via devtools
       if (gen !== S.gen || !el._vis) { c.width = 0; return; }
-      el.appendChild(c); el._done = true;
+      el.querySelectorAll('canvas').forEach((old) => { old.width = 0; old.remove(); });
+      el.appendChild(c); el._done = true; el._stale = false;
     } catch (e) { console.warn('page', n, e); }
-    finally { el._busy = false; if (!el._done && el._vis && gen !== S.gen) render(el); }
+    finally { el._busy = false; if ((!el._done || el._stale) && el._vis && gen !== S.gen) render(el); }
   }
 
   function buildPages() {
@@ -192,33 +195,106 @@
 
   $('#pageInput').addEventListener('change', (e) => { goTo(+e.target.value); e.target.blur(); });   // blur: arrow keys work again right away
 
-  /* ---------- zoom ---------- */
-  function setScale(s) {
-    const keep = S.page;
-    S.fit = false; S.scale = Math.min(4, Math.max(0.4, s));
-    layout(); goTo(keep);
+  /* ---------- zoom: the page follows your fingers live, the sharp re-draw happens once at the end ---------- */
+  const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const Z = { active: false, f: 1, ox: 0, oy: 0, cx0: 0, cy0: 0, cx: 0, cy: 0, timer: 0 };
+  const fitScale = () => Math.max(0.3, (viewer.clientWidth - 24) / S.base[0]);
+  const zoomLimits = () => { const f = fitScale(); return [f * 0.4, Math.max(5, f * 6)]; };
+
+  function zoomBegin(clientX, clientY) {
+    const r = viewer.getBoundingClientRect();
+    Z.active = true; Z.f = 1;
+    Z.cx0 = Z.cx = clientX - r.left; Z.cy0 = Z.cy = clientY - r.top;
+    Z.ox = viewer.scrollLeft + Z.cx0; Z.oy = viewer.scrollTop + Z.cy0;     // the spot of the document under the gesture centre
+    pagesEl.style.transformOrigin = Z.ox + 'px ' + Z.oy + 'px';
+    pagesEl.style.willChange = 'transform';
   }
-  $('#zoomIn').onclick = () => setScale(S.scale * 1.2);
-  $('#zoomOut').onclick = () => setScale(S.scale / 1.2);
-  $('#fit').onclick = () => { const keep = S.page; S.fit = true; layout(); goTo(keep); };
-  viewer.addEventListener('wheel', (e) => {
-    if (!e.ctrlKey) return; e.preventDefault(); setScale(S.scale * (e.deltaY < 0 ? 1.1 : 1 / 1.1));
+  function zoomUpdate(f, clientX, clientY) {
+    const r = viewer.getBoundingClientRect(), lim = zoomLimits();
+    Z.f = clamp(f, lim[0] / S.scale, lim[1] / S.scale);
+    Z.cx = clientX - r.left; Z.cy = clientY - r.top;
+    pagesEl.style.transform = 'translate(' + (Z.cx - Z.cx0) + 'px,' + (Z.cy - Z.cy0) + 'px) scale(' + Z.f + ')';
+  }
+  function zoomCommit() {
+    clearTimeout(Z.timer);
+    if (!Z.active) return;
+    Z.active = false;
+    // which page spot sits under the gesture centre (pages scale, the gaps between them do not, so remember it per page)
+    let a = S.els[S.els.length - 1];
+    for (const el of S.els) { if (el.offsetTop + el.offsetHeight >= Z.oy) { a = el; break; } }
+    const fx = clamp((Z.ox - a.offsetLeft) / a.offsetWidth, 0, 1), fy = clamp((Z.oy - a.offsetTop) / a.offsetHeight, 0, 1);
+    const f = Z.f, cx = Z.cx, cy = Z.cy;
+    pagesEl.style.transition = 'none'; pagesEl.style.transform = ''; pagesEl.style.transformOrigin = ''; pagesEl.style.willChange = '';
+    if (Math.abs(f - 1) < 0.01) return;
+    S.scale *= f;
+    S.fit = Math.abs(S.scale / fitScale() - 1) < 0.03;                       // landing on "fit" counts as fit
+    layout(true);
+    viewer.scrollLeft = a.offsetLeft + fx * a.offsetWidth - cx;
+    viewer.scrollTop = a.offsetTop + fy * a.offsetHeight - cy;
+  }
+  /** animated zoom to an absolute scale around a point (buttons, wheel, double tap) */
+  function zoomTo(target, clientX, clientY, delay) {
+    const r = viewer.getBoundingClientRect();
+    if (clientX == null) { clientX = r.left + r.width / 2; clientY = r.top + r.height / 2; }
+    if (!Z.active) zoomBegin(clientX, clientY);
+    pagesEl.style.transition = 'transform .16s ease-out';
+    zoomUpdate(target / S.scale, Z.cx0 + r.left, Z.cy0 + r.top);
+    clearTimeout(Z.timer); Z.timer = setTimeout(zoomCommit, delay);
+  }
+  const zoomStep = (factor, x, y, delay) => zoomTo(S.scale * (Z.active ? Z.f : 1) * factor, x, y, delay);
+
+  $('#zoomIn').onclick = () => zoomStep(1.3, null, null, 260);
+  $('#zoomOut').onclick = () => zoomStep(1 / 1.3, null, null, 260);
+  $('#fit').onclick = () => zoomTo(fitScale(), null, null, 260);
+  viewer.addEventListener('wheel', (e) => {                                    // ctrl + wheel, and a trackpad pinch
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    zoomStep(Math.exp(-clamp(e.deltaY, -50, 50) * 0.0035), e.clientX, e.clientY, 170);   // a wheel notch = about +19%, a trackpad pinch is smooth
   }, { passive: false });
+
   let resizeT; window.addEventListener('resize', () => {
     clearTimeout(resizeT);
     resizeT = setTimeout(() => {
       if (!S.pdf) return;
       if (S.mode === 'book') { if (S.fb) S.fb.resize(); return; }
-      if (S.fit) { const k = S.page; layout(); goTo(k); }
+      if (S.fit) { const k = S.page; layout(true); goTo(k); }
     }, 200);
   });
-  // pinch to zoom (applied when the fingers lift)
-  let pd = 0, last = 0;
-  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-  viewer.addEventListener('touchstart', (e) => { if (e.touches.length === 2) pd = last = dist(e.touches); }, { passive: true });
-  viewer.addEventListener('touchmove', (e) => { if (e.touches.length === 2) { e.preventDefault(); last = dist(e.touches); } }, { passive: false });
-  viewer.addEventListener('touchend', (e) => { if (pd && e.touches.length < 2) { setScale(S.scale * (last / pd)); pd = 0; } });
 
+  // two fingers: pinch (live) + pan; one finger twice: double tap to zoom in / back to fit
+  let pinch = null, tapStart = null, lastTap = null;
+  const tdist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const tmid = (t) => [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2];
+  viewer.addEventListener('touchstart', (e) => {
+    tapStart = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now(), moved: false } : null;
+    if (e.touches.length === 2) {
+      clearTimeout(Z.timer); if (Z.active) zoomCommit();
+      pagesEl.style.transition = 'none';
+      const m = tmid(e.touches); zoomBegin(m[0], m[1]);
+      pinch = { d0: Math.max(10, tdist(e.touches)) };
+    }
+  }, { passive: true });
+  viewer.addEventListener('touchmove', (e) => {
+    if (tapStart && e.touches.length === 1 && Math.hypot(e.touches[0].clientX - tapStart.x, e.touches[0].clientY - tapStart.y) > 12) tapStart.moved = true;
+    if (pinch && e.touches.length === 2) {
+      e.preventDefault();
+      const m = tmid(e.touches);
+      zoomUpdate(tdist(e.touches) / pinch.d0, m[0], m[1]);
+    }
+  }, { passive: false });
+  const pinchEnd = (e) => {
+    if (pinch && e.touches.length < 2) { pinch = null; zoomCommit(); return; }
+    if (tapStart && !tapStart.moved && e.touches.length === 0 && Date.now() - tapStart.t < 260) {
+      const now = Date.now();
+      if (lastTap && now - lastTap.t < 320 && Math.hypot(tapStart.x - lastTap.x, tapStart.y - lastTap.y) < 36) {
+        lastTap = null;
+        const fit = fitScale();
+        zoomTo(Math.abs(S.scale / fit - 1) < 0.08 ? fit * 2.4 : fit, tapStart.x, tapStart.y, 280);
+      } else lastTap = { t: now, x: tapStart.x, y: tapStart.y };
+    }
+  };
+  viewer.addEventListener('touchend', pinchEnd);
+  viewer.addEventListener('touchcancel', () => { if (pinch) { pinch = null; zoomCommit(); } });
 
   /* ---------- book mode: pages turn like a real book (see flipbook.js) ---------- */
   const bookEl = $('#book');

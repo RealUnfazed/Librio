@@ -177,8 +177,10 @@
     }
 
     _gutterShadow(ctx, x, y, w, h, side) {
-      const g = side === 'r' ? ctx.createLinearGradient(x, 0, x + w * 0.09, 0) : ctx.createLinearGradient(x + w, 0, x + w * 0.91, 0);
-      g.addColorStop(0, 'rgba(0,0,0,.24)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      const gw = w * 0.14;
+      const g = side === 'r' ? ctx.createLinearGradient(x, 0, x + gw, 0) : ctx.createLinearGradient(x + w, 0, x + w - gw, 0);
+      g.addColorStop(0, 'rgba(0,0,0,.36)'); g.addColorStop(0.1, 'rgba(0,0,0,.22)');
+      g.addColorStop(0.4, 'rgba(0,0,0,.08)'); g.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
     }
     /** one page at (x, y); side = which edge touches the spine ('l' page: right edge, 'r' page: left edge) */
@@ -254,12 +256,13 @@
       const unfolded = clipPoly(rect, M, n, 1);     // the part still lying flat
       const flap = folded.map((p) => reflect(p, M, n));
       const shade = pw * 0.55;
+      const fade = clamp((1 - prog) / 0.3, 0, 1);                           // curl shading strength: 0 when the sheet is flat again
 
       // shadow of the bending sheet on the page underneath, where the sheet used to be
       if (folded.length > 2 && spec.under !== null) {
         ctx.save(); polyPath(ctx, folded); ctx.clip();
         const g = ctx.createLinearGradient(M[0], M[1], M[0] - n[0] * shade * 0.5, M[1] - n[1] * shade * 0.5);
-        g.addColorStop(0, 'rgba(0,0,0,.2)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+        g.addColorStop(0, 'rgba(0,0,0,' + (0.22 * fade) + ')'); g.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = g; ctx.fillRect(-this.W, -this.H, this.W * 3, this.H * 3);
         ctx.restore();
       }
@@ -275,7 +278,7 @@
         // soft shadow the lifted sheet throws on everything below
         ctx.save();
         ctx.beginPath(); ctx.rect(sx - pw, T - 30, pw * 2, ph + 60); ctx.clip();
-        ctx.shadowColor = 'rgba(0,0,0,.45)'; ctx.shadowBlur = 26 * d; ctx.shadowOffsetX = -9 * d * (spec.mirror ? -1 : 1); ctx.shadowOffsetY = 4 * d;
+        ctx.shadowColor = 'rgba(0,0,0,' + (0.45 * fade) + ')'; ctx.shadowBlur = 26 * d; ctx.shadowOffsetX = -9 * d * (spec.mirror ? -1 : 1); ctx.shadowOffsetY = 4 * d;
         polyPath(ctx, flap); ctx.fillStyle = PAPER; ctx.fill();
         ctx.restore();
 
@@ -291,10 +294,10 @@
         this._paper(ctx, 0, 0, this._img(spec.back), fi, 'l');
         ctx.restore();
         const g2 = ctx.createLinearGradient(M[0], M[1], M[0] + n[0] * shade, M[1] + n[1] * shade);
-        g2.addColorStop(0, 'rgba(0,0,0,.36)'); g2.addColorStop(0.16, 'rgba(0,0,0,.15)'); g2.addColorStop(0.7, 'rgba(255,255,255,.07)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
+        g2.addColorStop(0, 'rgba(0,0,0,' + (0.36 * fade) + ')'); g2.addColorStop(0.16, 'rgba(0,0,0,' + (0.15 * fade) + ')'); g2.addColorStop(0.7, 'rgba(255,255,255,' + (0.07 * fade) + ')'); g2.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = g2; ctx.fillRect(-this.W, -this.H, this.W * 3, this.H * 3);
         ctx.restore();
-        ctx.save(); polyPath(ctx, flap); ctx.strokeStyle = 'rgba(0,0,0,.16)'; ctx.lineWidth = 1; ctx.stroke(); ctx.restore();
+        ctx.save(); polyPath(ctx, flap); ctx.strokeStyle = 'rgba(0,0,0,' + (0.16 * fade) + ')'; ctx.lineWidth = 1; ctx.stroke(); ctx.restore();
       }
       ctx.restore();
     }

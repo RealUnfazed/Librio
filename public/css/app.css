@@ -210,7 +210,7 @@ body.reader{overflow:hidden;background:#cfccc4;user-select:none;-webkit-user-sel
 .pane .item small{display:block;color:var(--muted)} .pane input{margin:6px 0 10px}
 #loader{position:fixed;inset:0;z-index:30;background:var(--bg);display:grid;place-items:center;text-align:center;padding:20px;color:var(--ink)}
 #loader progress{width:min(300px,78vw);height:8px;accent-color:var(--brand)}#loader[hidden]{display:none}
-@media (max-width:560px){#title,#zoomOut,#zoomIn,#fit{display:none}#bar{gap:0;padding-inline:6px}#bar button,#bar a{min-width:38px}#pageInput{width:46px}#pager{margin-inline:auto;font-size:.82rem}}
+@media (max-width:560px){#bar #title,#bar #zoomOut,#bar #zoomIn,#bar #fit{display:none}#bar{gap:0;padding-inline:6px}#bar button,#bar a{min-width:38px}#pageInput{width:46px}#pager{margin-inline:auto;font-size:.82rem}}
 @media print{body.reader{display:none!important}}
 
 /* ====== theme toggle ====== */
